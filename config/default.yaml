@@ -1,0 +1,67 @@
+data:
+  host: "https://clob.polymarket.com"
+  gamma_host: "https://gamma-api.polymarket.com"
+  data_api_host: "https://data-api.polymarket.com"
+  markets_limit: 1000
+  open_market_pages: 60
+  closed_market_pages: 260
+  trades_limit: 1200000
+  trade_fetch_mode: "by_markets"
+  trade_market_count: 3000
+  per_market_trades_limit: 400
+  lookback_days: 365
+
+cache:
+  enabled: true
+  dir: ".cache/backtest"
+
+embeddings:
+  backend: "sentence_transformers"
+  hashing_n_features: 4096
+  st_model_name: "BAAI/bge-large-en-v1.5"
+  st_device: "auto"
+  st_batch_size: 64
+  st_normalize_embeddings: true
+
+strategy:
+  min_user_volume: 10.0
+  min_weighted_history: 0.0
+  skill_threshold: 0.03
+  consensus_threshold: 0.7
+  min_skilled_traders: 1
+  max_single_trader_weight: 1.0
+  min_edge: 0.0
+  positive_similarity_only: true
+  similarity_floor: 0.0
+  max_trades_per_market: 2
+
+execution:
+  delay_seconds: 300
+  trade_fee_bps: 0.0
+  slippage_bps: 10.0
+  min_entry_price: 0.0
+  max_entry_price: 1.0
+  stable_min_price: 0.8
+  lottery_min_price: 0.1
+  lottery_max_price: 0.5
+  dynamic_price_at_consensus: 1.0
+  dynamic_price_at_high_confidence: 1.0
+  dynamic_high_confidence: 0.97
+
+risk:
+  initial_balance: 10000.0
+  max_market_fraction: 0.02
+  max_balance_fraction: 0.1
+  max_loss_per_trade_fraction: 0.02
+  min_ticket_size: 10.0
+  stable_balance_fraction: 0.2
+  lottery_lot_size: 5.0
+  lottery_max_exposure_fraction: 0.0
+  min_days_to_resolution: 5
+  max_days_to_resolution: 40
+
+backtest:
+  start_ts: null
+  end_ts: null
+  train_end_ts: null
+  validation_end_ts: null

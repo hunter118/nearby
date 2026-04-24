@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nearby-polymarket-backtest"
+version = "0.1.0"
+description = "Event-driven Polymarket backtesting framework with strict anti-leakage design."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "matplotlib>=3.9",
+  "numpy>=1.26",
+  "pandas>=2.2",
+  "pyyaml>=6.0",
+  "requests>=2.31",
+  "scikit-learn>=1.5",
+  "sentence-transformers>=3.0,<3.1",
+  "transformers>=4.41,<4.42",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
