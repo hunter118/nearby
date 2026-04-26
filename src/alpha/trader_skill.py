@@ -72,7 +72,7 @@ class TraderSkillEstimator:
         for rows in self.by_trader.values():
             rows.sort(key=lambda x: x.settled_at)
 
-    def _embedding_signature(self, questions: list[str]) -> str:
+    def _embedding_signature(self, questions: list[str], include_runtime_options: bool = True) -> str:
         payload = {
             "backend": self.embedding_config.backend,
             "hashing_n_features": self.embedding_config.hashing_n_features,
@@ -81,6 +81,8 @@ class TraderSkillEstimator:
             "market_ids": self.market_ids,
             "questions": questions,
         }
+        if include_runtime_options:
+            payload["st_trust_remote_code"] = self.embedding_config.st_trust_remote_code
         raw = json.dumps(payload, ensure_ascii=True, separators=(",", ":")).encode("utf-8")
         return hashlib.sha256(raw).hexdigest()[:16]
 
@@ -91,13 +93,42 @@ class TraderSkillEstimator:
         cache_root.mkdir(parents=True, exist_ok=True)
         signature = self._embedding_signature(questions)
         cache_path = cache_root / f"market_embeddings_{signature}.npz"
-        if cache_path.exists():
-            cached = np.load(cache_path, allow_pickle=True)
-            cached_ids = cached["market_ids"].tolist()
-            if cached_ids == self.market_ids:
-                return cached["vectors"]
-        vectors = self.embedder.embed_texts(questions)
-        np.savez_compressed(
+        legacy_signature = self._embedding_signature(questions, include_runtime_options=False)
+        legacy_cache_path = cache_root / f"market_embeddings_{legacy_signature}.npz"
+        for candidate_path in [cache_path, legacy_cache_path]:
+            if candidate_path.exists():
+                cached = np.load(candidate_path, allow_pickle=True)
+                cached_ids = cached["market_ids"].tolist()
+                if cached_ids == self.market_ids:
+                    return cached["vectors"]
+
+        chunk_size = max(1, int(self.embedding_config.st_cache_chunk_size))
+        parts_dir = cache_root / f"market_embeddings_{signature}_parts"
+        parts_dir.mkdir(parents=True, exist_ok=True)
+        part_paths: list[Path] = []
+        total = len(questions)
+        for start in range(0, total, chunk_size):
+            end = min(start + chunk_size, total)
+            part_path = parts_dir / f"part_{start:08d}_{end:08d}.npz"
+            part_paths.append(part_path)
+            if part_path.exists():
+                cached_part = np.load(part_path, allow_pickle=True)
+                if cached_part["market_ids"].tolist() == self.market_ids[start:end]:
+                    print(f"Embedding cache: loaded chunk {start}:{end}", flush=True)
+                    continue
+            print(f"Embedding cache: encoding chunk {start}:{end} of {total}", flush=True)
+            part_vectors = self.embedder.embed_texts(questions[start:end])
+            np.savez(
+                part_path,
+                market_ids=np.array(self.market_ids[start:end], dtype=object),
+                vectors=part_vectors,
+            )
+
+        vectors = np.concatenate(
+            [np.load(path, allow_pickle=True)["vectors"] for path in part_paths],
+            axis=0,
+        )
+        np.savez(
             cache_path,
             market_ids=np.array(self.market_ids, dtype=object),
             vectors=vectors,

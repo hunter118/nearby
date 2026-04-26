@@ -18,12 +18,12 @@ cache:
 embeddings:
   backend: "sentence_transformers"
   hashing_n_features: 4096
-  st_model_name: "Qwen/Qwen3-Embedding-8B"
+  st_model_name: "BAAI/bge-large-en-v1.5"
   st_device: "auto"
-  st_batch_size: 16
+  st_batch_size: 64
   st_normalize_embeddings: true
-  st_trust_remote_code: true
-  st_cache_chunk_size: 1024
+  st_trust_remote_code: false
+  st_cache_chunk_size: 4096
 
 strategy:
   min_user_volume: 10.0
@@ -61,6 +61,12 @@ risk:
   lottery_max_exposure_fraction: 0.0
   min_days_to_resolution: 5
   max_days_to_resolution: 40
+  position_sizing: "target_exposure_annualized"
+  target_exposure_fraction: 0.97
+  cash_buffer_fraction: 0.05
+  min_target_order_fraction: 0.05
+  max_target_order_fraction: 0.35
+  annualized_edge_multiplier: 0.25
 
 backtest:
   start_ts: null

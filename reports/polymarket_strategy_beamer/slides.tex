@@ -166,7 +166,7 @@
 \end{frame}
 
 \begin{frame}{Current Strategy Rules}
-  Current production-style research configuration:
+  Baseline fixed-fraction configuration:
 
   \begin{itemize}
     \item Trade only the stable bucket: entry token price $>0.8$.
@@ -182,6 +182,38 @@
       \]
     \item Maximum two entries per market.
   \end{itemize}
+\end{frame}
+
+\begin{frame}{Target Exposure Sizing}
+  Alternative sizing experiment:
+
+  \[
+    \text{target deployed} = 0.97 \times \text{total equity}
+  \]
+
+  \[
+    \text{available cash}
+    =
+    \text{cash}
+    -
+    0.05 \times \text{total equity}
+  \]
+
+  \[
+    \text{annualized edge}
+    =
+    \max(\text{confidence} - \text{entry price}, 0)
+    \times
+    \frac{365}{\text{days to resolution}}
+  \]
+
+  \[
+    \text{order notional}
+    =
+    \text{remaining target budget}
+    \times
+    \operatorname{clip}(0.25 \times \text{annualized edge}, 0.05, 0.35)
+  \]
 \end{frame}
 
 \begin{frame}{Backtest Framework in One Slide}
@@ -206,79 +238,110 @@
 \begin{frame}{Backtest Result Snapshot}
   \begin{table}
     \centering
-    \begin{tabular}{lr}
+    \begin{tabular}{lrr}
       \toprule
-      Metric & Value \\
+      Metric & Fixed 20\% & Target Exposure \\
       \midrule
-      Trade period & 2023-03-16 to 2026-04-24 \\
-      Duration & 1134.95 days / 3.107 years \\
-      Markets in universe & 299,318 \\
-      Historical trades sampled & 1,195,104 \\
-      Unique traders & 330,576 \\
-      Strategy trades & 513 \\
-      Win rate & 99.03\% \\
-      Total realized PnL & 12,541.45 \\
-      Average PnL per settled trade & 24.45 \\
-      Final total equity & 22,600.15 \\
-      Approx. CAGR & 30.00\% \\
+      Trade period & \multicolumn{2}{c}{2023-03-16 to 2026-04-24} \\
+      Duration & \multicolumn{2}{c}{1134.95 days / 3.107 years} \\
+      Markets in universe & \multicolumn{2}{c}{299,318} \\
+      Historical trades sampled & \multicolumn{2}{c}{1,195,104} \\
+      Unique traders & \multicolumn{2}{c}{330,576} \\
+      Strategy trades & 513 & 514 \\
+      Win rate & 99.03\% & 99.03\% \\
+      Total realized PnL & 12,541.45 & 22,783.38 \\
+      Average PnL per settled trade & 24.45 & 44.33 \\
+      Final total equity & 22,600.15 & 33,220.86 \\
+      Approx. CAGR & 30.00\% & 47.12\% \\
       \bottomrule
     \end{tabular}
   \end{table}
 \end{frame}
 
-\begin{frame}{Detailed Experimental Results}
+\begin{frame}{Realized Results Comparison}
   \begin{table}
     \centering
-    \begin{tabular}{lr}
+    \begin{tabular}{lrr}
       \toprule
-      Metric & Value \\
+      Metric & Fixed 20\% & Target Exposure \\
       \midrule
-      \texttt{trades} & 513 \\
-      \texttt{win\_rate} & 0.990253 \\
-      \texttt{total\_pnl} & 12,541.4474 \\
-      \texttt{avg\_pnl\_per\_trade} & 24.4473 \\
-      \texttt{pnl\_volatility} & 81.3893 \\
-      \texttt{final\_balance} & 34.2648 \\
-      \texttt{open\_positions} & 27 \\
-      \texttt{open\_notional} & 22,507.1826 \\
-      \texttt{open\_market\_value} & 22,565.8838 \\
-      \texttt{open\_unrealized\_pnl} & 58.7013 \\
-      \texttt{total\_equity} & 22,600.1487 \\
+      \texttt{trades} & 513 & 514 \\
+      \texttt{win\_rate} & 0.990253 & 0.990272 \\
+      \texttt{total\_pnl} & 12,541.4474 & 22,783.3788 \\
+      \texttt{avg\_pnl\_per\_trade} & 24.4473 & 44.3256 \\
+      \texttt{pnl\_volatility} & 81.3893 & 195.9001 \\
+      \texttt{final\_balance} & 34.2648 & 1,589.7532 \\
       \bottomrule
     \end{tabular}
   \end{table}
 \end{frame}
 
-\begin{frame}{Bucket-Level Results}
+\begin{frame}{Portfolio Snapshot Comparison}
   \begin{table}
     \centering
-    \begin{tabular}{lrrr}
+    \begin{tabular}{lrr}
       \toprule
-      Bucket & Trades & Win Rate & Notes \\
+      Metric & Fixed 20\% & Target Exposure \\
       \midrule
-      Stable: price $>0.8$ & 513 & 0.990253 & Active bucket \\
+      \texttt{open\_positions} & 27 & 34 \\
+      \texttt{open\_notional} & 22,507.1826 & 31,193.6256 \\
+      \texttt{open\_market\_value} & 22,565.8838 & 31,631.1050 \\
+      \texttt{open\_unrealized\_pnl} & 58.7013 & 437.4794 \\
+      \texttt{cash\_balance} & 34.2648 & 1,589.7532 \\
+      \texttt{total\_equity} & 22,600.1487 & 33,220.8582 \\
       \bottomrule
     \end{tabular}
   \end{table}
 
   \vspace{0.2cm}
   \begin{itemize}
-    \item The reported strategy performance comes entirely from the stable bucket.
-    \item Cash balance is low because stable-bucket sizing deploys capital into open positions.
+    \item Target exposure keeps more cash buffer while deploying more total notional.
+    \item The higher ending equity comes with higher realized PnL volatility.
   \end{itemize}
 \end{frame}
 
-\begin{frame}{Equity Curve}
-  \begin{center}
-    \includegraphics[width=0.92\linewidth]{figures/equity_curve.png}
-  \end{center}
+\begin{frame}{Bucket-Level Results}
+  \begin{table}
+    \centering
+    \begin{tabular}{lrrrr}
+      \toprule
+      Bucket & Fixed Trades & Fixed Win Rate & Target Trades & Target Win Rate \\
+      \midrule
+      Stable: price $>0.8$ & 513 & 0.990253 & 514 & 0.990272 \\
+      \bottomrule
+    \end{tabular}
+  \end{table}
+
+  \vspace{0.2cm}
+  \begin{itemize}
+    \item Both reported configurations trade only the stable bucket.
+    \item The lottery bucket remains disabled in both configurations.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Equity Curve Comparison}
+  \begin{columns}
+    \begin{column}{0.49\linewidth}
+      \centering
+      Fixed 20\% sizing
+
+      \includegraphics[width=\linewidth]{figures/equity_curve.png}
+    \end{column}
+    \begin{column}{0.49\linewidth}
+      \centering
+      Target exposure sizing
+
+      \includegraphics[width=\linewidth]{figures/equity_curve_target_exposure.png}
+    \end{column}
+  \end{columns}
 \end{frame}
 
 \begin{frame}{Result Interpretation}
   \begin{itemize}
     \item High win rate comes from trading high-probability stable outcomes.
     \item Positive total equity indicates that the expert-following filter adds value over this sample.
-    \item Final cash balance can be low because stable bucket sizing deploys substantial capital into open positions.
+    \item Target exposure sizing improves capital deployment and total equity in this run.
+    \item The improvement comes with higher PnL volatility and larger open notional.
     \item The important portfolio value metric is total equity, not cash alone.
   \end{itemize}
 \end{frame}

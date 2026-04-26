@@ -21,6 +21,8 @@ class EmbeddingConfig:
     st_device: str = "auto"  # auto | cpu | mps | cuda
     st_batch_size: int = 64
     st_normalize_embeddings: bool = True
+    st_trust_remote_code: bool = False
+    st_cache_chunk_size: int = 4096
 
 
 class MarketEmbedder:
@@ -66,6 +68,8 @@ class SentenceTransformerEmbedder:
         device: str = "auto",
         batch_size: int = 64,
         normalize_embeddings: bool = True,
+        trust_remote_code: bool = False,
+        show_progress_bar: bool = False,
     ) -> None:
         try:
             from sentence_transformers import SentenceTransformer
@@ -75,9 +79,14 @@ class SentenceTransformerEmbedder:
                 "Install with: pip install sentence-transformers"
             ) from exc
         resolved_device = None if device == "auto" else device
-        self.model = SentenceTransformer(model_name, device=resolved_device)
+        self.model = SentenceTransformer(
+            model_name,
+            device=resolved_device,
+            trust_remote_code=trust_remote_code,
+        )
         self.batch_size = batch_size
         self.normalize_embeddings = normalize_embeddings
+        self.show_progress_bar = show_progress_bar
 
     def embed_texts(self, texts: list[str]) -> np.ndarray:
         if not texts:
@@ -86,10 +95,10 @@ class SentenceTransformerEmbedder:
             texts,
             batch_size=self.batch_size,
             normalize_embeddings=self.normalize_embeddings,
-            show_progress_bar=False,
+            show_progress_bar=self.show_progress_bar,
             convert_to_numpy=True,
         )
-        return vectors.astype(float)
+        return vectors.astype(np.float32)
 
     def pairwise_similarity(
         self,
@@ -115,5 +124,7 @@ def build_embedder(config: EmbeddingConfig):
             device=config.st_device,
             batch_size=config.st_batch_size,
             normalize_embeddings=config.st_normalize_embeddings,
+            trust_remote_code=config.st_trust_remote_code,
+            show_progress_bar=False,
         )
     raise ValueError(f"Unsupported embedding backend: {config.backend}")

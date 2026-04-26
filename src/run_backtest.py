@@ -188,6 +188,8 @@ def main() -> None:
         st_device=str(embedding_cfg_raw.get("st_device", "auto")),
         st_batch_size=int(embedding_cfg_raw.get("st_batch_size", 64)),
         st_normalize_embeddings=bool(embedding_cfg_raw.get("st_normalize_embeddings", True)),
+        st_trust_remote_code=bool(embedding_cfg_raw.get("st_trust_remote_code", False)),
+        st_cache_chunk_size=int(embedding_cfg_raw.get("st_cache_chunk_size", 4096)),
     )
     skill_estimator = TraderSkillEstimator(
         markets=markets,
@@ -226,6 +228,12 @@ def main() -> None:
         max_loss_per_trade_fraction=float(cfg["risk"]["max_loss_per_trade_fraction"]),
         min_ticket_size=float(cfg["risk"]["min_ticket_size"]),
         initial_balance=float(cfg["risk"]["initial_balance"]),
+        position_sizing=str(cfg["risk"].get("position_sizing", "fixed_fraction")),
+        target_exposure_fraction=float(cfg["risk"].get("target_exposure_fraction", 0.0)),
+        cash_buffer_fraction=float(cfg["risk"].get("cash_buffer_fraction", 0.0)),
+        min_target_order_fraction=float(cfg["risk"].get("min_target_order_fraction", 0.0)),
+        max_target_order_fraction=float(cfg["risk"].get("max_target_order_fraction", 1.0)),
+        annualized_edge_multiplier=float(cfg["risk"].get("annualized_edge_multiplier", 1.0)),
     )
     engine = EventDrivenBacktester(
         markets=markets,

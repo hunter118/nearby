@@ -63,6 +63,12 @@ class BacktestConfig:
     max_loss_per_trade_fraction: float
     min_ticket_size: float
     initial_balance: float
+    position_sizing: str = "fixed_fraction"
+    target_exposure_fraction: float = 0.0
+    cash_buffer_fraction: float = 0.0
+    min_target_order_fraction: float = 0.0
+    max_target_order_fraction: float = 1.0
+    annualized_edge_multiplier: float = 1.0
 
 
 class EventDrivenBacktester:
@@ -117,6 +123,32 @@ class EventDrivenBacktester:
             if self.config.lottery_min_price <= token_price <= self.config.lottery_max_price:
                 exposure += position.quantity * position.avg_entry_price
         return exposure
+
+    def _pending_stable_exposure(self) -> float:
+        return sum(order.max_notional for order in self.pending_orders if order.price_bucket == "stable")
+
+    def _stable_order_notional(self, token_price: float, confidence: float, wait_days: float) -> float:
+        if self.config.position_sizing != "target_exposure_annualized":
+            return self.balance * self.config.stable_balance_fraction
+
+        open_notional, _, _, total_equity = self._portfolio_snapshot()
+        target_deployed = total_equity * self.config.target_exposure_fraction
+        deployed_or_committed = open_notional + self._pending_stable_exposure()
+        remaining_to_target = max(0.0, target_deployed - deployed_or_committed)
+        cash_buffer = total_equity * self.config.cash_buffer_fraction
+        available_cash = max(0.0, self.balance - cash_buffer)
+        if remaining_to_target <= 0.0 or available_cash <= 0.0:
+            return 0.0
+
+        signal_edge = max(0.0, confidence - token_price)
+        annualized_edge = signal_edge * 365.0 / max(wait_days, 1e-9)
+        allocation_fraction = annualized_edge * self.config.annualized_edge_multiplier
+        allocation_fraction = _clamp(
+            allocation_fraction,
+            self.config.min_target_order_fraction,
+            self.config.max_target_order_fraction,
+        )
+        return min(remaining_to_target * allocation_fraction, available_cash)
 
     def run(self) -> dict[str, object]:
         for event in self.timeline:
@@ -268,8 +300,25 @@ class EventDrivenBacktester:
         if any(x.market_id == trade.market_id for x in self.pending_orders):
             return
 
+        market = self.markets.get(trade.market_id)
+        if market is None:
+            return
+        settle_ts = market.resolved_at or market.close_time
+        if settle_ts is None:
+            return
+        min_wait_seconds = self.config.min_days_to_resolution * 86400.0
+        max_wait_seconds = self.config.max_days_to_resolution * 86400.0
+        wait_seconds = (settle_ts - trade.timestamp).total_seconds()
+        if wait_seconds <= min_wait_seconds or wait_seconds >= max_wait_seconds:
+            return
+        wait_days = wait_seconds / 86400.0
+
         if bucket == "stable":
-            order_notional = self.balance * self.config.stable_balance_fraction
+            order_notional = self._stable_order_notional(
+                token_price=token_price,
+                confidence=decision.confidence,
+                wait_days=wait_days,
+            )
             if order_notional < self.config.min_ticket_size:
                 return
             fixed_quantity = None
@@ -282,18 +331,6 @@ class EventDrivenBacktester:
             lottery_cap = equity * self.config.lottery_max_exposure_fraction
             if self._lottery_open_exposure() + order_notional > lottery_cap:
                 return
-
-        market = self.markets.get(trade.market_id)
-        if market is None:
-            return
-        settle_ts = market.resolved_at or market.close_time
-        if settle_ts is None:
-            return
-        min_wait_seconds = self.config.min_days_to_resolution * 86400.0
-        max_wait_seconds = self.config.max_days_to_resolution * 86400.0
-        wait_seconds = (settle_ts - trade.timestamp).total_seconds()
-        if wait_seconds <= min_wait_seconds or wait_seconds >= max_wait_seconds:
-            return
 
         self.pending_orders.append(
             PendingOrder(
