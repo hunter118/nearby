@@ -1,17 +1,21 @@
-\documentclass[10pt,aspectratio=169]{beamer}
+\documentclass[11pt,aspectratio=169]{beamer}
 
-\usetheme{Madrid}
+\usetheme{Warsaw}
 \usecolortheme{default}
+\setbeamertemplate{navigation symbols}{}
 
 \usepackage{booktabs}
 \usepackage{amsmath}
 \usepackage{graphicx}
 \usepackage{hyperref}
 \usepackage{tikz}
+\usepackage{etoolbox}
 
-\title[Polymarket Expert-Following Backtest]{An Expert-Following Strategy for Polymarket}
+\AtBeginEnvironment{tabular}{\small}
+
+\title[Polymarket Expert-Following Strategy]{An Expert-Following Strategy for Polymarket}
 \subtitle{Methodology and Backtest Results}
-\author{Shiqi Lei}
+\author{\texorpdfstring{Shiqi Lei \qquad Qiannan Huang \qquad Shuang Ma \qquad Su Mei}{Shiqi Lei, Qiannan Huang, Shuang Ma, Su Mei}}
 \date{\today}
 
 \begin{document}
@@ -34,13 +38,19 @@
   \begin{itemize}
     \item Market metadata is fetched from the Polymarket Gamma API.
     \item Public historical trades are fetched from the Polymarket Data API.
-    \item Cached full-market run:
+    \item Cached market metadata universe:
       \begin{itemize}
         \item 299,318 market records.
+      \end{itemize}
+    \item Cached trade sample used for the reported results:
+      \begin{itemize}
+        \item \texttt{trade\_market\_count = 3000}: top-volume markets only.
+        \item \texttt{per\_market\_trades\_limit = 400}: at most 400 sampled trades per market.
         \item 1,195,104 normalized trade rows.
         \item 2,993 trade-covered markets.
         \item 2,516 trade-covered markets with available resolution labels.
       \end{itemize}
+    \item The reported backtests do not use complete trade history for all 299,318 markets.
     \item Local cache is used for markets, trades, and embeddings to make repeated runs practical.
   \end{itemize}
 \end{frame}
@@ -109,6 +119,7 @@
   Current implementation supports:
   \begin{itemize}
     \item \texttt{sentence\_transformers}: currently \texttt{BAAI/bge-large-en-v1.5}.
+    \item Larger \texttt{Qwen3-Embedding} experiments did not materially improve backtest results.
     \item \texttt{hashing}: faster fallback for parameter sweeps.
   \end{itemize}
 \end{frame}
@@ -216,26 +227,36 @@
   \]
 \end{frame}
 
-\begin{frame}{Backtest Framework in One Slide}
+\begin{frame}{Backtest Framework}
   \begin{center}
-    \begin{tikzpicture}[node distance=1.9cm, every node/.style={rectangle, draw, rounded corners, align=center, minimum width=2.2cm, minimum height=0.8cm}]
-      \node (data) {Market +\\Trade Data};
-      \node (embed) [right of=data, xshift=1.7cm] {Question\\Embeddings};
-      \node (skill) [right of=embed, xshift=1.7cm] {Trader\\Skill};
-      \node (signal) [below of=skill] {Consensus\\Signal};
-      \node (engine) [left of=signal, xshift=-1.7cm] {Delayed\\Execution};
-      \node (eval) [left of=engine, xshift=-1.7cm] {PnL +\\Equity Curve};
+    \begin{tikzpicture}[
+      node distance=0.85cm,
+      every node/.style={
+        rectangle,
+        draw,
+        rounded corners,
+        align=center,
+        minimum width=11.5cm,
+        minimum height=0.55cm
+      }
+    ]
+      \node (data) {Market metadata + public historical trades};
+      \node (embed) [below of=data] {Question embeddings and market similarity};
+      \node (skill) [below of=embed] {Historical settlement PnL $\rightarrow$ trader skill};
+      \node (signal) [below of=skill] {Skilled-trader directional consensus};
+      \node (engine) [below of=signal] {Delayed execution + risk and sizing rules};
+      \node (eval) [below of=engine] {Settlement-only PnL + total equity curve};
 
-      \draw[->] (data) -- (embed);
-      \draw[->] (embed) -- (skill);
-      \draw[->] (skill) -- (signal);
-      \draw[->] (signal) -- (engine);
-      \draw[->] (engine) -- (eval);
+      \draw[->] (data.south) -- (embed.north);
+      \draw[->] (embed.south) -- (skill.north);
+      \draw[->] (skill.south) -- (signal.north);
+      \draw[->] (signal.south) -- (engine.north);
+      \draw[->] (engine.south) -- (eval.north);
     \end{tikzpicture}
   \end{center}
 \end{frame}
 
-\begin{frame}{Backtest Result Snapshot}
+\begin{frame}{Experiment Setup and Headline Results}
   \begin{table}
     \centering
     \begin{tabular}{lrr}
@@ -244,21 +265,26 @@
       \midrule
       Trade period & \multicolumn{2}{c}{2023-03-16 to 2026-04-24} \\
       Duration & \multicolumn{2}{c}{1134.95 days / 3.107 years} \\
-      Markets in universe & \multicolumn{2}{c}{299,318} \\
+      Market metadata records & \multicolumn{2}{c}{299,318} \\
+      Trade-covered markets & \multicolumn{2}{c}{2,993} \\
+      Trade sampling config & \multicolumn{2}{c}{top 3,000 markets, max 400 trades each} \\
       Historical trades sampled & \multicolumn{2}{c}{1,195,104} \\
       Unique traders & \multicolumn{2}{c}{330,576} \\
       Strategy trades & 513 & 514 \\
       Win rate & 99.03\% & 99.03\% \\
-      Total realized PnL & 12,541.45 & 22,783.38 \\
-      Average PnL per settled trade & 24.45 & 44.33 \\
       Final total equity & 22,600.15 & 33,220.86 \\
       Approx. CAGR & 30.00\% & 47.12\% \\
       \bottomrule
     \end{tabular}
   \end{table}
+
+  \vspace{0.15cm}
+  \begin{itemize}
+    \item These results are not based on complete trade history for all 299,318 markets.
+  \end{itemize}
 \end{frame}
 
-\begin{frame}{Realized Results Comparison}
+\begin{frame}{Detailed Results Comparison}
   \begin{table}
     \centering
     \begin{tabular}{lrr}
@@ -271,23 +297,10 @@
       \texttt{avg\_pnl\_per\_trade} & 24.4473 & 44.3256 \\
       \texttt{pnl\_volatility} & 81.3893 & 195.9001 \\
       \texttt{final\_balance} & 34.2648 & 1,589.7532 \\
-      \bottomrule
-    \end{tabular}
-  \end{table}
-\end{frame}
-
-\begin{frame}{Portfolio Snapshot Comparison}
-  \begin{table}
-    \centering
-    \begin{tabular}{lrr}
-      \toprule
-      Metric & Fixed 20\% & Target Exposure \\
-      \midrule
       \texttt{open\_positions} & 27 & 34 \\
       \texttt{open\_notional} & 22,507.1826 & 31,193.6256 \\
       \texttt{open\_market\_value} & 22,565.8838 & 31,631.1050 \\
       \texttt{open\_unrealized\_pnl} & 58.7013 & 437.4794 \\
-      \texttt{cash\_balance} & 34.2648 & 1,589.7532 \\
       \texttt{total\_equity} & 22,600.1487 & 33,220.8582 \\
       \bottomrule
     \end{tabular}
@@ -297,25 +310,6 @@
   \begin{itemize}
     \item Target exposure keeps more cash buffer while deploying more total notional.
     \item The higher ending equity comes with higher realized PnL volatility.
-  \end{itemize}
-\end{frame}
-
-\begin{frame}{Bucket-Level Results}
-  \begin{table}
-    \centering
-    \begin{tabular}{lrrrr}
-      \toprule
-      Bucket & Fixed Trades & Fixed Win Rate & Target Trades & Target Win Rate \\
-      \midrule
-      Stable: price $>0.8$ & 513 & 0.990253 & 514 & 0.990272 \\
-      \bottomrule
-    \end{tabular}
-  \end{table}
-
-  \vspace{0.2cm}
-  \begin{itemize}
-    \item Both reported configurations trade only the stable bucket.
-    \item The lottery bucket remains disabled in both configurations.
   \end{itemize}
 \end{frame}
 
@@ -342,19 +336,25 @@
     \item Positive total equity indicates that the expert-following filter adds value over this sample.
     \item Target exposure sizing improves capital deployment and total equity in this run.
     \item The improvement comes with higher PnL volatility and larger open notional.
+    \item A 1,000-trades-per-market rerun did not improve over the reported 400-trade sample result.
     \item The important portfolio value metric is total equity, not cash alone.
   \end{itemize}
 \end{frame}
 
-\begin{frame}{Main Risks and Limitations}
-  \begin{itemize}
-    \item Public API data may be incomplete or schema-shifting.
-    \item Backtest assumes fills at delayed observed trade prices plus slippage.
-    \item Liquidity and market impact are simplified.
-    \item Open positions are marked using last known trade prices.
-    \item Trader skill scores may overstate noisy small-sample performance.
-    \item Parameter choices were research-driven and require out-of-sample validation.
-  \end{itemize}
+\begin{frame}{What Makes This Method Different}
+  \begin{block}{Training-free expert following}
+    The strategy does not fit a supervised prediction model or rely on a fixed train/test split.
+    At each event time, it learns from traders who were historically strong on already-settled,
+    semantically similar markets. Market embeddings are fixed representations and are not fitted
+    to backtest outcomes, which reduces classic label-overfitting risk.
+  \end{block}
+
+  \vspace{0.2cm}
+  \begin{block}{Main limitations}
+    The approach still depends on manually selected thresholds, a hand-designed trader-skill score,
+    and a hand-designed sizing rule. It may also weaken if strong traders rotate accounts or if the
+    sampled public trade data misses important market flow.
+  \end{block}
 \end{frame}
 
 \begin{frame}{Implemented but Disabled}

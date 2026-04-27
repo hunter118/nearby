@@ -5,7 +5,7 @@ data:
   markets_limit: 1000
   open_market_pages: 60
   closed_market_pages: 260
-  trades_limit: 1200000
+  trades_limit: 3000000
   trade_fetch_mode: "by_markets"
   trade_market_count: 3000
   per_market_trades_limit: 400
@@ -61,6 +61,12 @@ risk:
   lottery_max_exposure_fraction: 0.0
   min_days_to_resolution: 5
   max_days_to_resolution: 40
+  position_sizing: "target_exposure_annualized"
+  target_exposure_fraction: 0.97
+  cash_buffer_fraction: 0.05
+  min_target_order_fraction: 0.05
+  max_target_order_fraction: 0.35
+  annualized_edge_multiplier: 0.25
 
 backtest:
   start_ts: null
