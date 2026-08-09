@@ -280,14 +280,12 @@ fixed-path cost stresses, and the paper figures are regenerated with:
 python src/make_execution_study_artifacts.py
 ```
 
-Research outputs:
+Code-only release contents:
 
-- `reports/polymarket_paper/main.pdf`: compiled paper.
-- `reports/polymarket_paper/references.bib`: verified 23-entry bibliography.
-- `reports/polymarket_paper/supplement/`: literature, method, data/API audits,
-  snapshot manifest, semantic-risk report, and machine-readable experiment
-  results.
+- `src/alpha/`, `src/backtest/`, and `src/data/`: strategy, execution, and data
+  normalization logic.
 - `src/run_semantic_risk_study.py`: frozen offline long-window risk runner.
+- `src/run_research.py`: point-in-time snapshot builder and research entry point.
 - `src/alpha/risk_presets.py`: ordered threshold and robustness specifications.
 - `src/make_semantic_risk_artifacts.py`: long-window tables and figures.
 - `src/make_execution_study_artifacts.py`: recent execution, capacity, and cost
@@ -295,7 +293,10 @@ Research outputs:
 - `src/make_paper_figures.py`: supporting deterministic paper figures.
 - `src/check_paper_result_consistency.py`: checks reported TeX values against
   machine-readable artifacts.
+- `config/` and `tests/`: frozen configuration and regression coverage.
 
-Large raw and normalized API caches remain under `.cache/` and are intentionally
-not committed.  The manifest records the snapshot boundary, cache checksum,
-row counts, exclusions, and error totals needed to audit a local rerun.
+The public repository intentionally excludes raw and normalized API data,
+embeddings, local caches, generated CSV/JSON results, compiled papers, and paper
+working files.  Artifact builders expect those local research inputs when used;
+they are included so the transformation from experiment outputs to reported
+tables and figures remains inspectable.
