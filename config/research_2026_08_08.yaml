@@ -1,0 +1,71 @@
+data:
+  host: "https://clob.polymarket.com"
+  gamma_host: "https://gamma-api.polymarket.com"
+  data_api_host: "https://data-api.polymarket.com"
+  timeout_seconds: 30
+
+research:
+  snapshot_id: "2026-08-08"
+  cache_dir: ".cache/research/2026-08-08"
+  output_dir: "artifacts/research_2026-08-08"
+  legacy_markets_cache: ".cache/backtest/markets_d5251626a43e92b1.pkl"
+  legacy_trades_cache: ".cache/backtest/normalized_trades_a09446975d2bd57b.pkl"
+  legacy_embedding_cache: ".cache/backtest/embeddings/market_embeddings_68de3261e02d304a.npz"
+  fetch_workers: 8
+  max_incremental_trades_per_market: 100000
+  equity_record_interval: 1000
+
+embeddings:
+  backend: "sentence_transformers"
+  hashing_n_features: 4096
+  st_model_name: "BAAI/bge-large-en-v1.5"
+  st_device: "auto"
+  st_batch_size: 64
+  st_normalize_embeddings: true
+  st_trust_remote_code: false
+  st_cache_chunk_size: 4096
+
+strategy:
+  min_user_volume: 10.0
+  min_weighted_history: 0.0
+  skill_threshold: 0.03
+  consensus_threshold: 0.7
+  min_skilled_traders: 1
+  max_single_trader_weight: 1.0
+  min_edge: 0.0
+  signal_weighting: "skill_volume"
+  flow_lookback_seconds: null
+  max_trades_per_market: 2
+
+execution:
+  delay_seconds: 300
+  trade_fee_bps: 0.0
+  slippage_bps: 10.0
+  min_entry_price: 0.0
+  max_entry_price: 1.0
+  stable_min_price: 0.8
+  lottery_min_price: 0.1
+  lottery_max_price: 0.5
+  dynamic_price_at_consensus: 1.0
+  dynamic_price_at_high_confidence: 1.0
+  dynamic_high_confidence: 0.97
+  max_fill_participation: null
+
+risk:
+  initial_balance: 10000.0
+  max_market_fraction: 0.02
+  max_balance_fraction: 0.1
+  max_loss_per_trade_fraction: 0.02
+  min_ticket_size: 10.0
+  stable_balance_fraction: 0.2
+  lottery_lot_size: 5.0
+  lottery_max_exposure_fraction: 0.0
+  min_days_to_resolution: 5
+  max_days_to_resolution: 40
+  position_sizing: "target_exposure_annualized"
+  target_exposure_fraction: 0.97
+  cash_buffer_fraction: 0.05
+  min_target_order_fraction: 0.05
+  max_target_order_fraction: 0.35
+  annualized_edge_multiplier: 0.25
+  enforce_risk_caps: false

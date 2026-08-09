@@ -68,6 +68,22 @@ class FilledOrder:
     fee: float
     signal_time: datetime
     filled_at: datetime
+    signal_confidence: float = 0.0
+    skilled_trader_count: int = 0
+    directional_trader_count: int = 0
+    effective_directional_traders: float = 0.0
+    signal_concentration: float = 0.0
+    directional_concentration: float = 0.0
+    mean_expert_history_markets: float = 0.0
+    mean_expert_similarity: float = 0.0
+    mean_positive_history_fraction: float = 0.0
+    mean_skill_score_std: float = 0.0
+    semantic_risk_class: str = "standard"
+    signal_token_price: float = 0.0
+    order_requested_notional: float = 0.0
+    source_trade_size: float = 0.0
+    source_trade_side: str = ""
+    child_fill_index: int = 1
 
 
 @dataclass(frozen=True)
@@ -92,8 +108,22 @@ class PendingOrder:
     max_notional: float
     signal_confidence: float
     allowed_entry_price: float
+    signal_token_price: float = 0.0
+    original_notional: float = 0.0
     fixed_quantity: float | None = None
     price_bucket: str = "stable"
+    confirmation_trades_seen: int = 0
+    remaining_slices: int = 1
+    skilled_trader_count: int = 0
+    directional_trader_count: int = 0
+    effective_directional_traders: float = 0.0
+    signal_concentration: float = 0.0
+    directional_concentration: float = 0.0
+    mean_expert_history_markets: float = 0.0
+    mean_expert_similarity: float = 0.0
+    mean_positive_history_fraction: float = 0.0
+    mean_skill_score_std: float = 0.0
+    semantic_risk_class: str = "standard"
 
 
 @dataclass(frozen=True)

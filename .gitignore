@@ -14,6 +14,21 @@ artifacts/
 *.toc
 *.fls
 *.fdb_latexmk
+*.bbl
+*.blg
+*.egg-info/
+tmp/
+output/
+
+# Local research ledger: authoritative working notes, intentionally not versioned.
+/METHOD_AND_EXPERIMENT_LEDGER.md
+
+# Regenerable diagnostics that are not referenced by the formal paper.
+/reports/polymarket_paper/figures/execution_equity_comparison.png
+/reports/polymarket_paper/figures/experiment_returns.png
+/reports/polymarket_paper/figures/main_equity.png
+/reports/polymarket_paper/figures/main_long_recent_equity.png
+/reports/polymarket_paper/figures/risk_control_equity.png
 
 reports/polymarket_strategy_beamer/*
 !reports/polymarket_strategy_beamer/figures/

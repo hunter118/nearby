@@ -194,3 +194,108 @@ All parameters live in `config/default.yaml`.
 ```bash
 pytest
 ```
+
+---
+
+## 10) 2026-08-08 Formal Research Snapshot
+
+The formal study fixes the market cohort at
+2026-04-27 06:45:40 UTC and evaluates subsequent events through
+2026-08-08 06:42:30 UTC:
+
+```bash
+python src/run_research.py \
+  --config config/research_2026_08_08.yaml
+```
+
+To update only the snapshot caches and manifest:
+
+```bash
+python src/run_research.py \
+  --config config/research_2026_08_08.yaml \
+  --fetch-only
+```
+
+The evidence is deliberately split into two samples.  The March 2023--August
+2026 replay is used to study the signal and semantic risk structure, while only
+the complete April--August 2026 trade tape is used for quantity-constrained
+execution and capacity claims.  Signal ablations do not establish an independent
+semantic alpha, so the paper's contribution is the expert-following and risk-control
+framework together with an explicit public-print execution model.
+
+### Exploratory semantic-risk study
+
+The failure audit shows that the dominant loss was a window-boundary cold
+start: one same-direction wallet was treated as unanimous consensus.  The
+exploratory risk overlay therefore requires at least two same-direction
+wallets, 1.25 effective wallets, no more than 75% directional weight from one
+wallet, and at least 1.5 effective related markets in the signal's aggregate
+expert history.  A transparent question classifier then caps competitive-event
+exposure, while a 15% general position cap limits all other one-market losses.
+
+Run the frozen offline long-window study with:
+
+```bash
+HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
+python src/run_semantic_risk_study.py
+```
+
+The long development replay covers March 16, 2023--August 8, 2026.  Its source
+cache is incomplete before the 2026 incremental segment, so it is used for
+threshold development and stability checks rather than as a clean out-of-sample
+estimate.  The selected 15% specification closes 312 positions, wins 310,
+returns +294.32%, and limits maximum drawdown to 21.08%.  On the complete
+April--August 2026 incremental segment, an unconstrained single-print fill
+closes 48 positions, all profitable, and returns +8.21%, but its median order is
+245% of the print used to price it.  The capacity-aware execution rule below
+returns +4.30% with a 3.58% maximum drawdown and fills 87.1% of requested
+notional.  Because the controls were chosen after inspecting losses, both
+results remain exploratory; the next credible test is a frozen prospective
+replay on post-snapshot data.
+
+### Capacity-aware execution study
+
+The execution runner can keep the signal and risk specification frozen while
+changing only delay, token/side eligibility, participation, parent-order life,
+price protection, and partial-fill behavior.  The primary recent rule waits
+five minutes, participates in at most 25% of every subsequent same-token public
+print, retains residual notional for 24 hours, permits only one parent order per
+market, and reserves its cash until fill or expiry.
+
+```bash
+HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
+python src/run_semantic_risk_study.py \
+  --start 2026-04-27T06:21:14 \
+  --end 2026-08-08T06:42:30 \
+  --base-preset tiered_position_cap_15pct \
+  --preset-family execution \
+  --presets execution_partial_target_token_25pct_24h
+```
+
+Use `--capacity-initial-balances 10000,25000,50000,100000` to replay the same
+rule as a capacity curve.  Machine-readable results, monthly performance,
+fixed-path cost stresses, and the paper figures are regenerated with:
+
+```bash
+python src/make_execution_study_artifacts.py
+```
+
+Research outputs:
+
+- `reports/polymarket_paper/main.pdf`: compiled paper.
+- `reports/polymarket_paper/references.bib`: verified 23-entry bibliography.
+- `reports/polymarket_paper/supplement/`: literature, method, data/API audits,
+  snapshot manifest, semantic-risk report, and machine-readable experiment
+  results.
+- `src/run_semantic_risk_study.py`: frozen offline long-window risk runner.
+- `src/alpha/risk_presets.py`: ordered threshold and robustness specifications.
+- `src/make_semantic_risk_artifacts.py`: long-window tables and figures.
+- `src/make_execution_study_artifacts.py`: recent execution, capacity, and cost
+  artifacts.
+- `src/make_paper_figures.py`: supporting deterministic paper figures.
+- `src/check_paper_result_consistency.py`: checks reported TeX values against
+  machine-readable artifacts.
+
+Large raw and normalized API caches remain under `.cache/` and are intentionally
+not committed.  The manifest records the snapshot boundary, cache checksum,
+row counts, exclusions, and error totals needed to audit a local rerun.

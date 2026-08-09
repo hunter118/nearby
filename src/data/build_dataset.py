@@ -41,14 +41,15 @@ def build_trade_events(records: Iterable[dict[str, Any]]) -> list[TradeEvent]:
     events: list[TradeEvent] = []
     for raw in records:
         ts = raw.get("timestamp")
-        if not ts:
+        side = raw.get("side")
+        if not ts or side not in {x.value for x in Side}:
             continue
         events.append(
             TradeEvent(
                 trade_id=str(raw.get("trade_id", "")),
                 market_id=str(raw.get("market_id")),
                 trader_id=str(raw.get("trader_id")),
-                side=Side(str(raw.get("side"))),
+                side=Side(str(side)),
                 price_yes=float(raw.get("price_yes", 0.5)),
                 size=float(raw.get("size", 0.0)),
                 timestamp=ts,
