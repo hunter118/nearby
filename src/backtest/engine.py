@@ -275,7 +275,14 @@ class EventDrivenBacktester:
     def run(self) -> dict[str, object]:
         last_event_ts = None
         for event_index, event in enumerate(self.timeline):
-            last_event_ts = event.ts
+            if (
+                self.config.equity_record_interval <= 0
+                and last_event_ts is not None
+                and event.ts.date() != last_event_ts.date()
+            ):
+                # In daily mode, preserve the state after the final event of
+                # the preceding UTC day before processing the new day's event.
+                self._record_equity(last_event_ts)
             if event.event_type == "trade":
                 trade = event.payload
                 assert isinstance(trade, TradeEvent)
@@ -286,9 +293,12 @@ class EventDrivenBacktester:
                 resolution = event.payload
                 assert isinstance(resolution, ResolutionEvent)
                 self._on_resolution(resolution)
-            interval = max(1, self.config.equity_record_interval)
-            if event_index % interval == 0 or event.event_type == "resolution":
+            interval = self.config.equity_record_interval
+            if interval > 0 and (
+                event_index % interval == 0 or event.event_type == "resolution"
+            ):
                 self._record_equity(event.ts)
+            last_event_ts = event.ts
 
         if last_event_ts is not None and (
             not self.equity_curve or self.equity_curve[-1]["ts"] != last_event_ts.isoformat(sep=" ")
@@ -574,6 +584,7 @@ class EventDrivenBacktester:
                 direction=direction,
                 volume=trade.size,
                 skill=skill.weighted_score,
+                weighted_history_notional=skill.weighted_history_notional,
                 effective_history_markets=skill.effective_history_markets,
                 mean_similarity=skill.mean_similarity,
                 positive_history_weight_fraction=skill.positive_history_weight_fraction,
@@ -590,6 +601,7 @@ class EventDrivenBacktester:
                     min_directional_traders=self.config.min_directional_traders,
                     min_effective_directional_traders=self.config.min_effective_directional_traders,
                     max_directional_trader_weight=self.config.max_directional_trader_weight,
+                    min_weighted_history_notional=self.config.min_user_volume,
                     min_expert_effective_history_markets=(
                         self.config.min_expert_effective_history_markets
                     ),
@@ -621,9 +633,6 @@ class EventDrivenBacktester:
             decision.mean_expert_history_markets
             < self.config.min_signal_mean_expert_history_markets
         ):
-            return
-        # Filter out traders without enough relevant historical volume.
-        if skill is not None and skill.weighted_history_notional < self.config.min_user_volume:
             return
         token_price = _token_price_from_yes(decision.direction, trade.price_yes)
         if token_price < self.config.min_entry_price or token_price > self.config.max_entry_price:

@@ -1,12 +1,20 @@
 from __future__ import annotations
 
 from pathlib import Path
+import shutil
 
 import matplotlib.pyplot as plt
 import pandas as pd
 
+from plot_style import configure_paper_plots
+
+
+configure_paper_plots()
+
 
 ARTIFACT_DIR = Path("artifacts/research_2026-08-08")
+PAPER_FIGURE_DIR = Path("reports/polymarket_paper/figures")
+PAPER_SUPPLEMENT_DIR = Path("reports/polymarket_paper/supplement")
 
 
 def make_return_comparison() -> None:
@@ -46,8 +54,13 @@ def make_return_comparison() -> None:
         vertical = "bottom" if value >= 0 else "top"
         ax.text(bar.get_x() + bar.get_width() / 2, value + offset, f"{value:.2f}%", ha="center", va=vertical)
     fig.tight_layout()
-    fig.savefig(ARTIFACT_DIR / "experiment_returns.png", dpi=220)
+    fig.savefig(ARTIFACT_DIR / "experiment_returns.pdf")
     plt.close(fig)
+    PAPER_SUPPLEMENT_DIR.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(
+        ARTIFACT_DIR / "experiment_results.csv",
+        PAPER_SUPPLEMENT_DIR / "experiment_results.csv",
+    )
 
 
 def make_trade_pnl_tail() -> None:
@@ -59,7 +72,9 @@ def make_trade_pnl_tail() -> None:
     ax.axhline(0.0, color="black", linewidth=0.8)
     ax.set_xlabel("Closed positions, sorted by PnL")
     ax.set_ylabel("Position PnL (USDC)")
-    ax.set_title("One full-loss position dominates 88 profitable positions")
+    profitable = int((closed["pnl"] > 0.0).sum())
+    losses = int((closed["pnl"] < 0.0).sum())
+    ax.set_title(f"{losses} full-loss positions dominate {profitable} profitable positions")
     ax.grid(axis="y", alpha=0.2)
     worst = closed.iloc[0]
     ax.annotate(
@@ -69,8 +84,11 @@ def make_trade_pnl_tail() -> None:
         arrowprops={"arrowstyle": "->", "color": "#333333"},
     )
     fig.tight_layout()
-    fig.savefig(ARTIFACT_DIR / "main_trade_pnl_tail.png", dpi=220)
+    output = ARTIFACT_DIR / "main_trade_pnl_tail.pdf"
+    fig.savefig(output)
     plt.close(fig)
+    PAPER_FIGURE_DIR.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(output, PAPER_FIGURE_DIR / output.name)
 
 
 if __name__ == "__main__":

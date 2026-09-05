@@ -17,6 +17,7 @@ class FlowObservation:
     mean_similarity: float = 0.0
     positive_history_weight_fraction: float = 0.0
     skill_score_std: float = 0.0
+    weighted_history_notional: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -66,6 +67,7 @@ class FlowAccumulator:
         min_directional_traders: int = 1,
         min_effective_directional_traders: float = 1.0,
         max_directional_trader_weight: float = 1.0,
+        min_weighted_history_notional: float = 0.0,
         min_expert_effective_history_markets: float = 0.0,
         min_expert_mean_similarity: float = 0.0,
         min_expert_positive_history_fraction: float = 0.0,
@@ -79,6 +81,7 @@ class FlowAccumulator:
         self.min_directional_traders = min_directional_traders
         self.min_effective_directional_traders = min_effective_directional_traders
         self.max_directional_trader_weight = max_directional_trader_weight
+        self.min_weighted_history_notional = min_weighted_history_notional
         self.min_expert_effective_history_markets = min_expert_effective_history_markets
         self.min_expert_mean_similarity = min_expert_mean_similarity
         self.min_expert_positive_history_fraction = min_expert_positive_history_fraction
@@ -101,6 +104,7 @@ class FlowAccumulator:
         return (
             row.skill >= self.skill_threshold
             and row.volume > 0.0
+            and row.weighted_history_notional >= self.min_weighted_history_notional
             and row.effective_history_markets >= self.min_expert_effective_history_markets
             and row.mean_similarity >= self.min_expert_mean_similarity
             and row.positive_history_weight_fraction
@@ -241,6 +245,7 @@ def decide_direction_from_flow(
     min_directional_traders: int = 1,
     min_effective_directional_traders: float = 1.0,
     max_directional_trader_weight: float = 1.0,
+    min_weighted_history_notional: float = 0.0,
     min_expert_effective_history_markets: float = 0.0,
     min_expert_mean_similarity: float = 0.0,
     min_expert_positive_history_fraction: float = 0.0,
@@ -255,6 +260,7 @@ def decide_direction_from_flow(
         min_directional_traders=min_directional_traders,
         min_effective_directional_traders=min_effective_directional_traders,
         max_directional_trader_weight=max_directional_trader_weight,
+        min_weighted_history_notional=min_weighted_history_notional,
         min_expert_effective_history_markets=min_expert_effective_history_markets,
         min_expert_mean_similarity=min_expert_mean_similarity,
         min_expert_positive_history_fraction=min_expert_positive_history_fraction,

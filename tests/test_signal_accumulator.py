@@ -96,3 +96,33 @@ def test_semantic_expert_history_quality_gates_observations():
     assert decision.skilled_trader_count == 1
     assert decision.directional_trader_count == 1
     assert decision.mean_expert_history_markets == 4.0
+
+
+def test_weighted_history_notional_gate_applies_to_every_observation():
+    rows = [
+        FlowObservation(
+            "thin",
+            "m",
+            Direction.YES,
+            volume=100.0,
+            skill=0.2,
+            weighted_history_notional=5.0,
+        ),
+        FlowObservation(
+            "qualified",
+            "m",
+            Direction.NO,
+            volume=10.0,
+            skill=0.2,
+            weighted_history_notional=20.0,
+        ),
+    ]
+    decision = decide_direction_from_flow(
+        rows,
+        0.03,
+        0.7,
+        min_weighted_history_notional=10.0,
+    )
+    assert decision.should_trade
+    assert decision.direction == Direction.NO
+    assert decision.skilled_trader_count == 1

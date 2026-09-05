@@ -13,7 +13,9 @@ research:
   legacy_embedding_cache: ".cache/backtest/embeddings/market_embeddings_68de3261e02d304a.npz"
   fetch_workers: 8
   max_incremental_trades_per_market: 100000
-  equity_record_interval: 1000
+  # Zero records the exact end-of-day portfolio state in UTC. Positive values
+  # retain the generic event-sampling mode used by the framework.
+  equity_record_interval: 0
 
 embeddings:
   backend: "sentence_transformers"

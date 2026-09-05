@@ -34,6 +34,23 @@ class _Estimator:
         return 1.0
 
 
+class _MixedHistoryEstimator(_Estimator):
+    def estimate(self, trader_id, target_market_id, as_of):
+        estimate = super().estimate(trader_id, target_market_id, as_of)
+        return SkillEstimate(
+            estimate.trader_id,
+            estimate.market_id,
+            estimate.as_of,
+            weighted_score=estimate.weighted_score,
+            weighted_history_notional=5.0 if trader_id == "thin" else 100.0,
+            supporting_markets=estimate.supporting_markets,
+            effective_history_markets=estimate.effective_history_markets,
+            mean_similarity=estimate.mean_similarity,
+            positive_history_weight_fraction=estimate.positive_history_weight_fraction,
+            weighted_score_std=estimate.weighted_score_std,
+        )
+
+
 def _config(**overrides):
     values = dict(
         delay_seconds=0,
@@ -125,6 +142,60 @@ def test_loss_cap_and_signal_diagnostics_reach_the_fill():
     assert fill.effective_directional_traders == pytest.approx(1.0)
     assert fill.mean_expert_history_markets == pytest.approx(3.0)
     assert fill.mean_positive_history_fraction == pytest.approx(0.8)
+
+
+def test_every_consensus_observation_meets_weighted_history_minimum():
+    start = datetime(2026, 1, 1)
+    markets = {"m1": _market("m1", start)}
+    timeline = [
+        _priced_trade("thin", "m1", "thin", start, Side.BUY_YES, 0.9),
+        _priced_trade(
+            "qualified",
+            "m1",
+            "qualified",
+            start + timedelta(seconds=1),
+            Side.BUY_NO,
+            0.1,
+        ),
+        _priced_trade(
+            "fill",
+            "m1",
+            "liquidity",
+            start + timedelta(seconds=2),
+            Side.BUY_NO,
+            0.1,
+        ),
+    ]
+    result = EventDrivenBacktester(
+        markets,
+        timeline,
+        _MixedHistoryEstimator(),
+        _config(),
+    ).run()
+
+    assert len(result["fills"]) == 1
+    assert result["fills"][0].direction == Direction.NO
+
+
+def test_daily_equity_mode_records_the_last_event_of_each_utc_day():
+    start = datetime(2026, 1, 1, 12)
+    markets = {"m1": _market("m1", start)}
+    timeline = [
+        _trade("signal", "m1", "alice", start),
+        _trade("fill", "m1", "bob", start + timedelta(hours=1)),
+        _trade("mark", "m1", "carol", start + timedelta(days=1)),
+    ]
+    result = EventDrivenBacktester(
+        markets,
+        timeline,
+        _Estimator(),
+        _config(equity_record_interval=0),
+    ).run()
+
+    assert [row["ts"] for row in result["equity_curve"]] == [
+        (start + timedelta(hours=1)).isoformat(sep=" "),
+        (start + timedelta(days=1)).isoformat(sep=" "),
+    ]
 
 
 def test_partial_parent_orders_reserve_cash_at_submission():
