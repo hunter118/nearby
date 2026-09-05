@@ -137,7 +137,8 @@ All parameters live in `config/default.yaml`.
 - `st_normalize_embeddings`: whether to L2-normalize embeddings before similarity.
 
 ### `strategy.*` (signal logic)
-- `min_user_volume`: minimum weighted historical notional required for a trader to be considered.
+- `min_user_volume`: minimum semantic-weighted historical notional required for
+  every trade observation before it can enter consensus.
 - `min_weighted_history`: minimum denominator (`sum(weights)`) for valid skill estimate.
 - `skill_threshold`: minimum weighted skill to classify flow as skilled.
 - `consensus_threshold`: minimum directional ratio to trigger a signal.
@@ -176,6 +177,9 @@ All parameters live in `config/default.yaml`.
 ### `backtest.*` (time split placeholders)
 - `start_ts`, `end_ts`: optional simulation window bounds.
 - `train_end_ts`, `validation_end_ts`: optional split markers for train/validation/testing workflows.
+- `research.equity_record_interval: 0` in the frozen research configuration
+  records the exact state after the last event of each UTC day; positive values
+  use generic event-count sampling.
 
 ---
 
@@ -243,13 +247,14 @@ python src/run_semantic_risk_study.py
 The long development replay covers March 16, 2023--August 8, 2026.  Its source
 cache is incomplete before the 2026 incremental segment, so it is used for
 threshold development and stability checks rather than as a clean out-of-sample
-estimate.  The selected 15% specification closes 312 positions, wins 310,
-returns +294.32%, and limits maximum drawdown to 21.08%.  On the complete
+estimate.  The selected 15% specification closes 334 positions, wins 332,
+returns +335.66%, and limits daily maximum drawdown to 14.81%.  On the complete
 April--August 2026 incremental segment, an unconstrained single-print fill
-closes 48 positions, all profitable, and returns +8.21%, but its median order is
-245% of the print used to price it.  The capacity-aware execution rule below
-returns +4.30% with a 3.58% maximum drawdown and fills 87.1% of requested
-notional.  Because the controls were chosen after inspecting losses, both
+closes 50 positions, all profitable, and returns +8.33%, but its median order is
+245% of the print used to price it and its 90th percentile is 3,143%.  The
+capacity-aware execution rule below returns +4.41% with a 0.21% daily maximum
+drawdown and fills 85.0% of requested notional.  Because the controls were
+chosen after inspecting losses, both
 results remain exploratory; the next credible test is a frozen prospective
 replay on post-snapshot data.
 
@@ -262,6 +267,11 @@ five minutes, participates in at most 25% of every subsequent same-token public
 print, retains residual notional for 24 hours, permits only one parent order per
 market, and reserves its cash until fill or expiry.
 
+These frozen-study commands require the local caches and embedding artifacts
+named in `config/research_2026_08_08.yaml`.  They are not included in this
+code-only repository, so a clean clone can run the tests and inspect the full
+algorithm but cannot reproduce the reported numbers without those inputs.
+
 ```bash
 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
 python src/run_semantic_risk_study.py \
@@ -273,7 +283,8 @@ python src/run_semantic_risk_study.py \
 ```
 
 Use `--capacity-initial-balances 10000,25000,50000,100000` to replay the same
-rule as a capacity curve.  Machine-readable results, monthly performance,
+rule as a capacity curve.  Omit `--presets` to run the complete execution preset
+grid.  Machine-readable results, monthly performance,
 fixed-path cost stresses, and the paper figures are regenerated with:
 
 ```bash
