@@ -18,6 +18,7 @@ PAPER_SUPPLEMENT_DIR = Path("reports/polymarket_paper/supplement")
 
 
 def make_return_comparison() -> None:
+    PAPER_FIGURE_DIR.mkdir(parents=True, exist_ok=True)
     results = pd.read_csv(ARTIFACT_DIR / "experiment_results.csv")
     selected = results[
         results["experiment"].isin(
