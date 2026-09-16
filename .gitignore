@@ -20,6 +20,12 @@ artifacts/
 tmp/
 output/
 
+# Public release stays code-only. Local data and manuscript attachments are private.
+/data/
+/reports/
+/releases/
+*.zip
+
 # Local research ledger: authoritative working notes, intentionally not versioned.
 /METHOD_AND_EXPERIMENT_LEDGER.md
 

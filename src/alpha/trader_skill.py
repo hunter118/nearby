@@ -66,6 +66,7 @@ class TraderSkillEstimator:
         embedding_cache_dir: str | None = None,
         similarity_mode: str = "semantic",
         embedding_bootstrap_path: str | None = None,
+        precomputed_market_vectors: np.ndarray | None = None,
     ) -> None:
         self.markets = markets
         self.min_weighted_history = min_weighted_history
@@ -82,11 +83,16 @@ class TraderSkillEstimator:
         self.embedding_bootstrap_path = embedding_bootstrap_path
         self.market_ids = list(markets.keys())
         questions = [markets[mid].question for mid in self.market_ids]
-        self.market_vectors = (
-            self._load_or_build_market_vectors(questions)
-            if self.similarity_mode == "semantic"
-            else np.zeros((len(questions), 0), dtype=float)
-        )
+        if self.similarity_mode != "semantic":
+            self.market_vectors = np.zeros((len(questions), 0), dtype=float)
+        elif precomputed_market_vectors is not None:
+            vectors = np.asarray(precomputed_market_vectors)
+            if (vectors.ndim != 2 or vectors.shape[0] != len(questions)
+                    or vectors.shape[1] == 0 or not np.isfinite(vectors).all()):
+                raise ValueError("Precomputed vectors must be finite and aligned with markets.")
+            self.market_vectors = vectors
+        else:
+            self.market_vectors = self._load_or_build_market_vectors(questions)
         self.market_index = {mid: idx for idx, mid in enumerate(self.market_ids)}
         self.by_trader: dict[str, list[TraderMarketSettlement]] = {}
         for row in settlements:

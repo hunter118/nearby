@@ -385,6 +385,12 @@ def main() -> None:
         help="UTC-naive ISO end; defaults to the frozen snapshot timestamp",
     )
     parser.add_argument("--output-dir", default=str(OUTPUT_DIR))
+    parser.add_argument("--similarity-mode", choices=("semantic", "uniform", "category"),
+                        default="semantic", help="Only changes weighting of wallet history.")
+    parser.add_argument("--export-snapshot", type=Path,
+                        help="Export lossless compact replay inputs to this directory.")
+    parser.add_argument("--export-only", action="store_true",
+                        help="Stop after exporting prepared data (requires --export-snapshot).")
     parser.add_argument(
         "--baseline-only",
         action="store_true",
@@ -427,6 +433,8 @@ def main() -> None:
         ),
     )
     args = parser.parse_args()
+    if args.export_only and not args.export_snapshot:
+        parser.error("--export-only requires --export-snapshot")
 
     config_path = _require_file(Path(args.config), "research config")
     cfg = yaml.safe_load(config_path.read_text(encoding="utf-8"))
@@ -637,9 +645,18 @@ def main() -> None:
         similarity_config=SimilarityConfig(True, 0.0),
         embedding_config=_embedding_config(cfg),
         embedding_cache_dir=str(cache_dir / "embeddings"),
-        similarity_mode="semantic",
+        similarity_mode=args.similarity_mode,
         embedding_bootstrap_path=cfg["research"].get("legacy_embedding_cache"),
     )
+    study_manifest["similarity_mode"] = args.similarity_mode
+    if args.export_snapshot:
+        if args.similarity_mode != "semantic":
+            raise ValueError("Snapshot export requires semantic mode to retain frozen vectors.")
+        from data.replay_snapshot import save_snapshot
+        save_snapshot(args.export_snapshot, markets, trade_events, settlements,
+                      estimator.market_vectors, study_manifest)
+        if args.export_only:
+            return
     base = _build_backtest_config(cfg)
     base_preset_source = None
     if args.base_preset:

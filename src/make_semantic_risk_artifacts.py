@@ -8,6 +8,11 @@ import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import pandas as pd
 
+from plot_style import configure_paper_plots
+
+
+configure_paper_plots()
+
 
 ROOT = Path("artifacts/semantic-risk-2026-08-08")
 PAPER = Path("reports/polymarket_paper")
@@ -19,6 +24,7 @@ LONG_NAMES = [
     "baseline",
     "consensus_loose",
     "consensus_history_1p5",
+    "semantic_event_cap_15pct",
     "tiered_position_cap_25pct",
     "tiered_position_cap_20pct",
     "tiered_position_cap_15pct",
@@ -119,22 +125,22 @@ def make_appendix_equity_figure() -> pd.DataFrame:
                 alpha=0.96,
             )
         axis.axhline(10.0, color="#666666", linewidth=0.7, linestyle=":")
-        axis.set_title(f"({letter}) {title}", loc="left", fontsize=12)
+        axis.set_title(f"({letter}) {title}", loc="left", fontsize=10.5)
         axis.grid(alpha=0.20)
-        axis.legend(fontsize=8.8, frameon=False, loc="upper left")
+        axis.legend(fontsize=8.3, frameon=False, loc="upper left")
         axis.xaxis.set_major_locator(mdates.YearLocator())
         axis.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
-        axis.tick_params(axis="both", labelsize=9.5)
-    axes[0, 0].set_ylabel("Portfolio equity (thousand USDC)", fontsize=10.5)
-    axes[1, 0].set_ylabel("Portfolio equity (thousand USDC)", fontsize=10.5)
-    axes[1, 0].set_xlabel("Date", fontsize=10.5)
-    axes[1, 1].set_xlabel("Date", fontsize=10.5)
+        axis.tick_params(axis="both", labelsize=8.8)
+    axes[0, 0].set_ylabel("Portfolio equity (thousand USDC)")
+    axes[1, 0].set_ylabel("Portfolio equity (thousand USDC)")
+    axes[1, 0].set_xlabel("Date")
+    axes[1, 1].set_xlabel("Date")
     fig.suptitle(
         "Equity paths across risk, parameter, and execution specifications",
-        fontsize=14,
+        fontsize=12,
     )
     fig.tight_layout(rect=(0, 0, 1, 0.97))
-    fig.savefig(ROOT / "appendix_equity_specifications.png", dpi=220)
+    fig.savefig(ROOT / "appendix_equity_specifications.pdf")
     plt.close(fig)
 
     exported = pd.concat(exported_curves, ignore_index=True)
@@ -165,9 +171,10 @@ def main() -> None:
         "baseline": "No risk overlay",
         "consensus_loose": "Independent consensus",
         "consensus_history_1p5": "+ history breadth",
-        "tiered_position_cap_25pct": "Tiered cap 25%",
-        "tiered_position_cap_20pct": "Tiered cap 20%",
-        "tiered_position_cap_15pct": "Tiered cap 15%",
+        "semantic_event_cap_15pct": "+ event cap",
+        "tiered_position_cap_25pct": "+ general cap 25%",
+        "tiered_position_cap_20pct": "+ general cap 20%",
+        "tiered_position_cap_15pct": "+ general cap 15%",
     }
     long = results[results.window == "long_development"].copy()
     long["label"] = long.experiment.map(label_map)
@@ -175,15 +182,46 @@ def main() -> None:
     long["drawdown_pct"] = -100.0 * long.max_drawdown
 
     plt.figure(figsize=(8.4, 5.2))
-    plt.scatter(long.drawdown_pct, long.return_pct, s=60, color="#2463a6")
+    plt.plot(
+        long.drawdown_pct,
+        long.return_pct,
+        color="#8b97a3",
+        linewidth=1.2,
+        alpha=0.85,
+        zorder=1,
+    )
+    plt.scatter(
+        long.drawdown_pct,
+        long.return_pct,
+        s=68,
+        color="#2463a6",
+        edgecolor="white",
+        linewidth=0.7,
+        zorder=2,
+    )
+    annotation_offsets = {
+        "No risk overlay": (7, -1),
+        "Independent consensus": (7, 7),
+        "+ history breadth": (7, -13),
+        "+ event cap": (7, 5),
+        "+ general cap 25%": (7, 5),
+        "+ general cap 20%": (7, -11),
+        "+ general cap 15%": (7, 3),
+    }
     for row in long.itertuples():
-        plt.annotate(row.label, (row.drawdown_pct, row.return_pct), xytext=(5, 4), textcoords="offset points", fontsize=8)
+        plt.annotate(
+            row.label,
+            (row.drawdown_pct, row.return_pct),
+            xytext=annotation_offsets[row.label],
+            textcoords="offset points",
+            fontsize=8,
+        )
     plt.xlabel("Maximum drawdown magnitude (%)")
     plt.ylabel("Total return (%)")
     plt.title("Long-window risk-return trade-off")
     plt.grid(alpha=0.22)
     plt.tight_layout()
-    plt.savefig(ROOT / "risk_return_tradeoff.png", dpi=200)
+    plt.savefig(ROOT / "risk_return_tradeoff.pdf")
     plt.close()
 
     fig, axes = plt.subplots(1, 2, figsize=(10.4, 4.4))
@@ -212,7 +250,7 @@ def main() -> None:
     for axis in axes:
         axis.tick_params(axis="x", rotation=25, labelsize=8)
     fig.tight_layout()
-    fig.savefig(ROOT / "risk_control_equity.png", dpi=200)
+    fig.savefig(ROOT / "risk_control_equity.pdf")
     plt.close(fig)
 
     make_appendix_equity_figure()
@@ -220,9 +258,9 @@ def main() -> None:
     PAPER.joinpath("figures").mkdir(parents=True, exist_ok=True)
     PAPER.joinpath("supplement").mkdir(parents=True, exist_ok=True)
     for name in [
-        "risk_return_tradeoff.png",
-        "risk_control_equity.png",
-        "appendix_equity_specifications.png",
+        "risk_return_tradeoff.pdf",
+        "risk_control_equity.pdf",
+        "appendix_equity_specifications.pdf",
     ]:
         shutil.copy2(ROOT / name, PAPER / "figures" / name)
     for name in ["consolidated_results.csv", "consolidated_results.json", "study_manifest.json"]:

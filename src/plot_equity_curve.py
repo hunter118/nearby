@@ -12,7 +12,11 @@ from backtest.engine import BacktestConfig, EventDrivenBacktester
 from data.build_dataset import build_markets, build_resolution_events, build_timeline, build_trade_events
 from data.polymarket_client import PolymarketClient
 from features.embeddings import EmbeddingConfig, SimilarityConfig
+from plot_style import configure_paper_plots
 from run_backtest import _cache_key, _cache_load, _cache_save
+
+
+configure_paper_plots()
 
 
 def load_config(path: str) -> dict:
@@ -24,7 +28,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Plot total equity over time.")
     parser.add_argument("--config", type=str, default="config/default.yaml")
     parser.add_argument("--csv-out", type=str, default="artifacts/equity_curve.csv")
-    parser.add_argument("--png-out", type=str, default="artifacts/equity_curve.png")
+    parser.add_argument("--pdf-out", type=str, default="artifacts/equity_curve.pdf")
     args = parser.parse_args()
     cfg = load_config(args.config)
 
@@ -209,9 +213,9 @@ def main() -> None:
     if curve.empty:
         raise RuntimeError("Equity curve is empty after applying first-fill filter.")
     csv_out = Path(args.csv_out)
-    png_out = Path(args.png_out)
+    pdf_out = Path(args.pdf_out)
     csv_out.parent.mkdir(parents=True, exist_ok=True)
-    png_out.parent.mkdir(parents=True, exist_ok=True)
+    pdf_out.parent.mkdir(parents=True, exist_ok=True)
     curve.to_csv(csv_out, index=False)
 
     plt.figure(figsize=(12, 6))
@@ -223,9 +227,9 @@ def main() -> None:
     plt.legend()
     plt.grid(alpha=0.2)
     plt.tight_layout()
-    plt.savefig(png_out, dpi=150)
+    plt.savefig(pdf_out)
     print(f"Saved equity curve csv: {csv_out}")
-    print(f"Saved equity curve chart: {png_out}")
+    print(f"Saved vector equity curve: {pdf_out}")
 
 
 if __name__ == "__main__":

@@ -10,6 +10,39 @@ Nearby is an event-driven backtesting framework for Polymarket strategies, with 
 
 This repository is tailored for research on expert-following strategies (follow high-skill traders under configurable execution/risk constraints).
 
+## Frozen ICLR 2027 code version
+
+Tag `iclr2027-v1` fixes the implementation and configurations corresponding to
+the approved ICLR working manuscript. The tag is a version label, not a claim
+of submission or acceptance. Subsequent global-score research is separate and
+does not change this frozen version or its reported experiments.
+
+The reproduction workflow now accepts compact frozen inputs and precomputed BGE
+vectors, without downloading a model at replay time. With `snapshot.json` and
+`replay.npz` from the separately distributed reproduction attachment placed in
+`data/frozen/`, run:
+
+```bash
+python src/run_frozen_replay.py
+python src/run_frozen_replay.py --all-experiments
+python src/make_replay_report.py
+```
+
+The first command runs the three headline specifications; the second runs all
+35 original specifications. `config/paper_experiments.json` fixes their exact
+time boundaries, parameters and reference metrics. The report command checks
+1,537 numeric metrics and regenerates empirical tables and six vector figures.
+The engine computes the results before comparing them with reference values.
+All 51 implementation tests pass. The default scoring mode remains semantic;
+optional nonsemantic modes are not additional reported ICLR experiments.
+
+This GitHub release remains code-only. It does not host the input snapshot,
+embeddings, empirical output files, manuscript, anonymous attachment, or private
+research notes. A clean clone can run the tests, but numerical replay requires
+the separate frozen inputs. Current public API responses are not guaranteed to
+reconstruct the historical snapshot. The older cache-based commands below remain
+available and have their own cache requirements.
+
 ---
 
 ## 1) High-Level Architecture

@@ -8,6 +8,11 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
 
+from plot_style import configure_paper_plots
+
+
+configure_paper_plots()
+
 
 ROOT = Path(__file__).resolve().parents[1]
 ARTIFACT_ROOT = ROOT / "artifacts" / "execution-2026-08-09"
@@ -121,7 +126,7 @@ def _plot_capacity_sensitivity(results: pd.DataFrame) -> None:
     axes[1].set_title("Order-lifetime sensitivity")
     axes[2].set_title("Capacity scaling")
     fig.tight_layout()
-    fig.savefig(FIGURES / "execution_capacity_sensitivity.png", dpi=220)
+    fig.savefig(FIGURES / "execution_capacity_sensitivity.pdf")
     plt.close(fig)
 
 
@@ -161,7 +166,8 @@ def _plot_equity_comparison(results: pd.DataFrame) -> None:
         curve["specification"] = label
         curve["experiment"] = experiment
         exported_curves.append(curve)
-        ax.plot(curve["ts"], curve["total_equity"], label=label, **style)
+        display_label = label.replace("≤", r"$\leq$")
+        ax.plot(curve["ts"], curve["total_equity"], label=display_label, **style)
     ax.axhline(10_000.0, color="black", linewidth=0.8, linestyle=":")
     ax.set_xlabel("Date")
     ax.set_ylabel("Portfolio equity (USDC)")
@@ -169,7 +175,7 @@ def _plot_equity_comparison(results: pd.DataFrame) -> None:
     ax.grid(alpha=0.20)
     ax.legend(fontsize=8, ncol=2, loc="upper left")
     fig.tight_layout()
-    fig.savefig(FIGURES / "execution_equity_comparison.png", dpi=220)
+    fig.savefig(FIGURES / "execution_equity_comparison.pdf")
     plt.close(fig)
     pd.concat(exported_curves, ignore_index=True).to_csv(
         SUPPLEMENT / "execution_equity_comparison.csv", index=False
@@ -218,7 +224,7 @@ def _plot_main_long_recent_equity(results: pd.DataFrame) -> None:
     long_ax.legend(fontsize=8.5, frameon=False, loc="upper left")
     long_ax.tick_params(axis="x", rotation=20, labelsize=8)
     long_fig.tight_layout()
-    long_fig.savefig(FIGURES / "main_long_equity.png", dpi=220)
+    long_fig.savefig(FIGURES / "main_long_equity.pdf")
     plt.close(long_fig)
 
     recent_specs = [
@@ -252,10 +258,11 @@ def _plot_main_long_recent_equity(results: pd.DataFrame) -> None:
         curve["experiment"] = experiment
         curve["execution_scope"] = "recent complete-tape execution"
         exported_curves.append(curve)
+        display_label = label.replace("≤", r"$\leq$")
         recent_ax.plot(
             curve["ts"],
             curve["total_equity"] / 1_000.0,
-            label=label,
+            label=display_label,
             **style,
         )
 
@@ -266,7 +273,7 @@ def _plot_main_long_recent_equity(results: pd.DataFrame) -> None:
     recent_ax.legend(fontsize=8.5, frameon=False, loc="upper left")
     recent_ax.tick_params(axis="x", rotation=20, labelsize=8)
     recent_fig.tight_layout()
-    recent_fig.savefig(FIGURES / "main_recent_execution_equity.png", dpi=220)
+    recent_fig.savefig(FIGURES / "main_recent_execution_equity.pdf")
     plt.close(recent_fig)
 
     pd.concat(exported_curves, ignore_index=True).to_csv(

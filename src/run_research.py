@@ -27,6 +27,10 @@ from backtest.engine import BacktestConfig, EventDrivenBacktester
 from data.build_dataset import build_markets, build_resolution_events, build_timeline, build_trade_events
 from data.polymarket_client import PolymarketClient
 from features.embeddings import EmbeddingConfig, SimilarityConfig
+from plot_style import configure_paper_plots
+
+
+configure_paper_plots()
 
 
 THREAD_LOCAL = threading.local()
@@ -382,7 +386,7 @@ def _write_main_artifacts(result: dict[str, Any], output_dir: Path) -> None:
     plt.grid(alpha=0.2)
     plt.legend()
     plt.tight_layout()
-    plt.savefig(output_dir / "main_equity.png", dpi=180)
+    plt.savefig(output_dir / "main_equity.pdf")
     plt.close()
 
 
