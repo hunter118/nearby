@@ -1,346 +1,128 @@
-## Nearby: Polymarket Backtesting Framework
+# Semantic Expert Following in Prediction Markets
 
-Nearby is an event-driven backtesting framework for Polymarket strategies, with an emphasis on:
+This is the code-only research release for the September 2026 manuscript. The
+strategy uses public wallet histories, question-text similarity, consensus
+controls and cash-funded allocation. It does not train a predictive model on
+trading outcomes and does not submit live orders.
 
-- public historical data ingestion (Gamma + Data API),
-- strict anti-leakage simulation logic,
-- settlement-based PnL accounting,
-- scalable local caching for repeated experiments,
-- equity curve export and plotting.
+## What this repository provides
 
-This repository is tailored for research on expert-following strategies (follow high-skill traders under configurable execution/risk constraints).
+- The event-driven portfolio engine, semantic expert scoring and observable-prefix
+  market-activation rule.
+- Exact, fully resolved configurations for the four main portfolios and the
+  reported sensitivity and exploratory comparisons.
+- A portable, checksum-verified prepared-input format and replay command.
+- Unit tests and a synthetic end-to-end example that require neither an API key
+  nor a model download.
 
-## Frozen ICLR 2027 code version
+This public repository does **not** include the historical transaction archive,
+wallet-history arrays, embedding vectors, empirical result files, manuscript,
+or anonymous review attachment. A successful synthetic test is not a
+reproduction of the paper's historical returns. Complete empirical replay
+requires the separate prepared inputs described in [REPRODUCING.md](REPRODUCING.md).
+Current API responses cannot be assumed to recover an identical past archive.
 
-Tag `iclr2027-v1` fixes the implementation and configurations corresponding to
-the approved ICLR working manuscript. The tag is a version label, not a claim
-of submission or acceptance. Subsequent global-score research is separate and
-does not change this frozen version or its reported experiments.
+## Strategy
 
-The reproduction workflow now accepts compact frozen inputs and precomputed BGE
-vectors, without downloading a model at replay time. With `snapshot.json` and
-`replay.npz` from the separately distributed reproduction attachment placed in
-`data/frozen/`, run:
+1. Observe actual-token dollar turnover from the declared observation boundary.
+   Historical wallet evidence starts after a market crosses one million USDC.
+2. Activate a current market only after sufficient observed turnover, at least
+   24 hours of observation, at least 100 prints in the preceding 24 hours,
+   a quantity-weighted YES-equivalent price at or above 0.90 (or at or below 0.10),
+   and a scheduled close less than 28 days away.
+3. Weight settled-wallet performance by the fixed question-vector kernel
+   `(max(cosine - 0.5, 0) / 0.5) ** 2`. Estimate skill from observed incremental
+   settlement PnL, not total wallet wealth or raw winning percentages.
+4. Aggregate qualifying wallet flow and require directional consensus,
+   distinct-address breadth, limited single-wallet concentration and relevant
+   historical support.
+5. Size orders from available cash and the remaining deployment target, subject
+   to general and text-classified competitive-event position caps. Apply the
+   declared execution delay and adverse price adjustment; hold filled positions
+   to the recorded settlement event.
 
-```bash
-python src/run_frozen_replay.py
-python src/run_frozen_replay.py --all-experiments
-python src/make_replay_report.py
-```
+The main configurations differ in allocation speed, position cap and price
+ceiling. Their exact definitions are in `config/paper_v2/`; do not reconstruct
+them from the older `config/default.yaml` demonstration settings.
 
-The first command runs the three headline specifications; the second runs all
-35 original specifications. `config/paper_experiments.json` fixes their exact
-time boundaries, parameters and reference metrics. The report command checks
-1,537 numeric metrics and regenerates empirical tables and six vector figures.
-The engine computes the results before comparing them with reference values.
-All 51 implementation tests pass. The default scoring mode remains semantic;
-optional nonsemantic modes are not additional reported ICLR experiments.
+## Interpretation
 
-This GitHub release remains code-only. It does not host the input snapshot,
-embeddings, empirical output files, manuscript, anonymous attachment, or private
-research notes. A clean clone can run the tests, but numerical replay requires
-the separate frozen inputs. Current public API responses are not guaranteed to
-reconstruct the historical snapshot. The older cache-based commands below remain
-available and have their own cache requirements.
+The historical experiment uses an archived, retrospectively assembled candidate
+inventory and an explicit metadata-proxy label schedule. Chronological event
+processing and past-prefix activation do not certify contemporaneous availability
+of every archived title, deadline or resolution label.
 
----
+Main fills are delayed **quantity-unconstrained historical-price simulations**.
+They do not reconstruct an order book, spread, queue priority or market impact.
+Thresholds were inspected on the same archive, and local sensitivity is not
+independent out-of-sample validation. These distinctions apply to all headline
+returns and drawdowns.
 
-## 1) High-Level Architecture
+## Installation and tests
 
-### Data Layer
-- Fetch market metadata from `gamma-api.polymarket.com`.
-- Fetch historical trades from `data-api.polymarket.com`.
-- Normalize everything into internal event objects (`trade` / `resolution`).
+Use Python 3.10 or newer; the release is tested with Python 3.12. Frozen-vector
+replay needs only the core numerical dependencies, not PyTorch or a transformer
+checkpoint.
 
-### Feature Layer
-- Convert market question text into embeddings (`hashing` or `sentence_transformers`).
-- Compute semantic similarity between current market and historical settled markets.
-
-### Skill Layer
-- For each trader and each settled market, compute a normalized settlement score.
-- For a target market at time `t`, compute trader skill as a weighted average of historical scores:
-  - weight = `similarity * historical_notional`.
-
-### Signal + Execution Layer
-- Build direction consensus from skilled trader flow.
-- Trigger delayed execution.
-- Enforce configurable price buckets, time-to-resolution constraints, and position sizing rules.
-
-### Evaluation Layer
-- Settlement metrics: `num_trades`, `win_rate`, `total_pnl`, `avg_pnl_per_trade`.
-- Portfolio snapshot: `cash`, `open_notional`, `open_market_value`, `total_equity`.
-- Full equity curve time series for plotting.
-
----
-
-## 2) Anti-Leakage Guarantees
-
-- Skill estimation only uses settled historical outcomes available at decision time.
-- No future resolution labels are used for generating current signals.
-- The event stream is processed chronologically.
-- Orders are filled only after the configured delay.
-
----
-
-## 3) PnL Interpretation
-
-Two values matter:
-
-- `final_balance`: cash on hand (can be low if much capital is still in open positions).
-- `total_equity`: `cash + open_market_value` (preferred portfolio value indicator).
-
-Use `total_equity` for strategy-level performance comparison.
-
----
-
-## 4) Repository Structure
-
-- `src/data/polymarket_client.py`: API clients + normalization helpers.
-- `src/data/build_dataset.py`: market/trade/resolution dataset and timeline assembly.
-- `src/features/embeddings.py`: embedding backends and similarity utilities.
-- `src/alpha/trader_skill.py`: trader settlement scoring and skill estimation.
-- `src/alpha/signal.py`: direction consensus signal logic.
-- `src/backtest/engine.py`: event-driven execution and portfolio accounting.
-- `src/eval/metrics.py`: summary metric computation.
-- `src/run_backtest.py`: main backtest entrypoint.
-- `src/plot_equity_curve.py`: export and plot equity curve.
-- `config/default.yaml`: all experiment controls in one place.
-
----
-
-## 5) Installation
-
-```bash
+```sh
 python -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev]"
+. .venv/bin/activate
+python -m pip install -e ".[dev]"
+python -m pytest -q
 ```
 
-If using `sentence_transformers`, first run may download model weights.
+For exact numerical comparisons, use `requirements-reference.txt` to match the
+recorded research environment; the broad dependency bounds above also support
+clean-environment software tests but do not promise bitwise identity across
+all future library releases.
 
----
+Optional question-embedding regeneration uses the `embeddings` extra. The paper
+uses `BAAI/bge-large-en-v1.5`, revision
+`d4aa6901d3a41ba39fb536a557fa166f842b0e09`; simply downloading the current default
+revision is not a substitute for the fixed vectors.
 
-## 6) Usage
-
-### Run a Backtest
-
-```bash
-python src/run_backtest.py --config config/default.yaml
+```sh
+python -m pip install -e ".[embeddings]"
 ```
 
-### Generate Equity Curve (CSV + PNG)
+## Reproduction
 
-```bash
-python src/plot_equity_curve.py \
-  --config config/default.yaml \
-  --csv-out artifacts/equity_curve.csv \
-  --png-out artifacts/equity_curve.png
+Follow [REPRODUCING.md](REPRODUCING.md) for exact commands, the synthetic smoke
+test, configuration groups, input verification and empirical replay. Read
+[DATA_FORMAT.md](DATA_FORMAT.md) before preparing or transferring inputs.
+
+The portable entry points are:
+
+```sh
+PYTHONPATH=src python -m paper_v2_inputs --help
+PYTHONPATH=src python -m paper_v2_replay --help
 ```
 
-Outputs:
-- `artifacts/equity_curve.csv`: timestamped equity snapshots.
-- `artifacts/equity_curve.png`: equity chart.
+For a small synthetic end-to-end check:
 
----
-
-## 7) Key Parameters (What Each One Means)
-
-All parameters live in `config/default.yaml`.
-
-### `data.*` (data scope and sampling)
-- `markets_limit`: page size for Gamma market pagination.
-- `open_market_pages`: number of pages fetched for open markets.
-- `closed_market_pages`: number of pages fetched for closed markets.
-- `trades_limit`: max number of trade rows fetched in total.
-- `trade_fetch_mode`: trade fetch strategy (`by_markets` or `global`).
-- `trade_market_count`: how many top-volume markets are sampled for trade fetch.
-- `per_market_trades_limit`: per-market trade cap in `by_markets` mode.
-- `lookback_days`: reserved lookback knob (useful for future filtering extensions).
-
-### `cache.*` (performance)
-- `enabled`: enable/disable local caching.
-- `dir`: cache directory for markets, normalized trades, and embeddings.
-
-### `embeddings.*` (text representation)
-- `backend`: embedding backend (`hashing` or `sentence_transformers`).
-- `hashing_n_features`: vector size for hashing backend.
-- `st_model_name`: sentence-transformers model name (when backend is ST).
-- `st_device`: runtime device (`auto`, `cpu`, `mps`, `cuda`).
-- `st_batch_size`: embedding batch size.
-- `st_normalize_embeddings`: whether to L2-normalize embeddings before similarity.
-
-### `strategy.*` (signal logic)
-- `min_user_volume`: minimum semantic-weighted historical notional required for
-  every trade observation before it can enter consensus.
-- `min_weighted_history`: minimum denominator (`sum(weights)`) for valid skill estimate.
-- `skill_threshold`: minimum weighted skill to classify flow as skilled.
-- `consensus_threshold`: minimum directional ratio to trigger a signal.
-- `min_skilled_traders`: minimum number of skilled traders participating.
-- `max_single_trader_weight`: concentration guardrail for one trader dominating signal weight.
-- `min_edge`: minimum confidence-minus-price edge required.
-- `positive_similarity_only`: clamp negative similarity values if true.
-- `similarity_floor`: lower bound used in similarity clamping.
-- `max_trades_per_market`: max entries allowed per market.
-
-### `execution.*` (entry gating)
-- `delay_seconds`: delay between signal and earliest allowed fill.
-- `trade_fee_bps`: fee assumption in basis points.
-- `slippage_bps`: slippage assumption in basis points.
-- `min_entry_price`: global minimum allowed token entry price.
-- `max_entry_price`: global maximum allowed token entry price.
-- `stable_min_price`: lower bound for “stable” bucket.
-- `lottery_min_price`: lower bound for “lottery” bucket.
-- `lottery_max_price`: upper bound for “lottery” bucket.
-- `dynamic_price_at_consensus`: dynamic cap at consensus threshold.
-- `dynamic_price_at_high_confidence`: dynamic cap at high-confidence anchor.
-- `dynamic_high_confidence`: confidence anchor for dynamic cap interpolation.
-
-### `risk.*` (position sizing and holding constraints)
-- `initial_balance`: starting cash.
-- `max_market_fraction`: market-volume-based cap for order notional.
-- `max_balance_fraction`: cash-based cap for order notional.
-- `max_loss_per_trade_fraction`: per-trade maximum-loss budget as balance fraction.
-- `min_ticket_size`: minimum notional to place any trade.
-- `stable_balance_fraction`: notional size for stable bucket as fraction of current balance.
-- `lottery_lot_size`: fixed quantity for lottery bucket trades.
-- `lottery_max_exposure_fraction`: max portfolio exposure allocated to lottery bucket.
-- `min_days_to_resolution`: minimum allowed days-to-resolution at entry time.
-- `max_days_to_resolution`: maximum allowed days-to-resolution at entry time.
-
-### `backtest.*` (time split placeholders)
-- `start_ts`, `end_ts`: optional simulation window bounds.
-- `train_end_ts`, `validation_end_ts`: optional split markers for train/validation/testing workflows.
-- `research.equity_record_interval: 0` in the frozen research configuration
-  records the exact state after the last event of each UTC day; positive values
-  use generic event-count sampling.
-
----
-
-## 8) Performance Notes
-
-- First run at large scale can be slow (API pulls + embedding build).
-- Re-runs with same configuration are much faster due to cache hits:
-  - `markets_*.pkl`
-  - `normalized_trades_*.pkl`
-  - `embeddings/market_embeddings_*.npz`
-
----
-
-## 9) Test
-
-```bash
-pytest
+```sh
+PYTHONPATH=src python -m paper_v2_inputs demo --output demo_inputs
+PYTHONPATH=src python -m paper_v2_replay \
+  --inputs demo_inputs/inputs --spec demo_inputs/spec.json \
+  --output demo_run --engine fast-checked
 ```
 
----
+Use new output directories for each run. This example creates a synthetic fill
+and settlement and compares both engines; it is not a historical paper replay.
 
-## 10) 2026-08-08 Formal Research Snapshot
+They are separate from the original workspace-bound research drivers, whose
+integrity checks intentionally still require their original artifacts. The
+portable format has its own declared content and implementation bindings; it
+does not silently disable the original checks.
 
-The formal study fixes the market cohort at
-2026-04-27 06:45:40 UTC and evaluates subsequent events through
-2026-08-08 06:42:30 UTC:
+## Earlier release
 
-```bash
-python src/run_research.py \
-  --config config/research_2026_08_08.yaml
-```
+The earlier implementation and documentation remain available under the
+[`iclr2027-v1`](https://github.com/hunter118/nearby/tree/iclr2027-v1) tag.
+The older `run_frozen_replay.py`/`config/paper_experiments.json` workflow is for
+that release, not the current main experiment. Its small input attachment must
+not be mistaken for the expanded archive required here.
 
-To update only the snapshot caches and manifest:
-
-```bash
-python src/run_research.py \
-  --config config/research_2026_08_08.yaml \
-  --fetch-only
-```
-
-The evidence is deliberately split into two samples.  The March 2023--August
-2026 replay is used to study the signal and semantic risk structure, while only
-the complete April--August 2026 trade tape is used for quantity-constrained
-execution and capacity claims.  Signal ablations do not establish an independent
-semantic alpha, so the paper's contribution is the expert-following and risk-control
-framework together with an explicit public-print execution model.
-
-### Exploratory semantic-risk study
-
-The failure audit shows that the dominant loss was a window-boundary cold
-start: one same-direction wallet was treated as unanimous consensus.  The
-exploratory risk overlay therefore requires at least two same-direction
-wallets, 1.25 effective wallets, no more than 75% directional weight from one
-wallet, and at least 1.5 effective related markets in the signal's aggregate
-expert history.  A transparent question classifier then caps competitive-event
-exposure, while a 15% general position cap limits all other one-market losses.
-
-Run the frozen offline long-window study with:
-
-```bash
-HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
-python src/run_semantic_risk_study.py
-```
-
-The long development replay covers March 16, 2023--August 8, 2026.  Its source
-cache is incomplete before the 2026 incremental segment, so it is used for
-threshold development and stability checks rather than as a clean out-of-sample
-estimate.  The selected 15% specification closes 334 positions, wins 332,
-returns +335.66%, and limits daily maximum drawdown to 14.81%.  On the complete
-April--August 2026 incremental segment, an unconstrained single-print fill
-closes 50 positions, all profitable, and returns +8.33%, but its median order is
-245% of the print used to price it and its 90th percentile is 3,143%.  The
-capacity-aware execution rule below returns +4.41% with a 0.21% daily maximum
-drawdown and fills 85.0% of requested notional.  Because the controls were
-chosen after inspecting losses, both
-results remain exploratory; the next credible test is a frozen prospective
-replay on post-snapshot data.
-
-### Capacity-aware execution study
-
-The execution runner can keep the signal and risk specification frozen while
-changing only delay, token/side eligibility, participation, parent-order life,
-price protection, and partial-fill behavior.  The primary recent rule waits
-five minutes, participates in at most 25% of every subsequent same-token public
-print, retains residual notional for 24 hours, permits only one parent order per
-market, and reserves its cash until fill or expiry.
-
-These frozen-study commands require the local caches and embedding artifacts
-named in `config/research_2026_08_08.yaml`.  They are not included in this
-code-only repository, so a clean clone can run the tests and inspect the full
-algorithm but cannot reproduce the reported numbers without those inputs.
-
-```bash
-HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
-python src/run_semantic_risk_study.py \
-  --start 2026-04-27T06:21:14 \
-  --end 2026-08-08T06:42:30 \
-  --base-preset tiered_position_cap_15pct \
-  --preset-family execution \
-  --presets execution_partial_target_token_25pct_24h
-```
-
-Use `--capacity-initial-balances 10000,25000,50000,100000` to replay the same
-rule as a capacity curve.  Omit `--presets` to run the complete execution preset
-grid.  Machine-readable results, monthly performance,
-fixed-path cost stresses, and the paper figures are regenerated with:
-
-```bash
-python src/make_execution_study_artifacts.py
-```
-
-Code-only release contents:
-
-- `src/alpha/`, `src/backtest/`, and `src/data/`: strategy, execution, and data
-  normalization logic.
-- `src/run_semantic_risk_study.py`: frozen offline long-window risk runner.
-- `src/run_research.py`: point-in-time snapshot builder and research entry point.
-- `src/alpha/risk_presets.py`: ordered threshold and robustness specifications.
-- `src/make_semantic_risk_artifacts.py`: long-window tables and figures.
-- `src/make_execution_study_artifacts.py`: recent execution, capacity, and cost
-  artifacts.
-- `src/make_paper_figures.py`: supporting deterministic paper figures.
-- `src/check_paper_result_consistency.py`: checks reported TeX values against
-  machine-readable artifacts.
-- `config/` and `tests/`: frozen configuration and regression coverage.
-
-The public repository intentionally excludes raw and normalized API data,
-embeddings, local caches, generated CSV/JSON results, compiled papers, and paper
-working files.  Artifact builders expect those local research inputs when used;
-they are included so the transformation from experiment outputs to reported
-tables and figures remains inspectable.
+Only core code, fixed configurations, tests and usage documentation are
+published. No credentials, personal research ledger, raw empirical data or
+manuscript files belong in this code release.

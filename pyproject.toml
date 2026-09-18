@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nearby-polymarket-backtest"
-version = "0.1.0"
-description = "Event-driven Polymarket backtesting framework with strict anti-leakage design."
+version = "0.2.0"
+description = "Semantic wallet expert-following research with chronological portfolio replay."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -15,13 +15,16 @@ dependencies = [
   "pyyaml>=6.0",
   "requests>=2.31",
   "scikit-learn>=1.5",
-  "sentence-transformers>=5.1,<5.2",
-  "transformers>=4.51,<4.52",
+  "scipy>=1.11",
 ]
 
 [project.optional-dependencies]
 dev = [
   "pytest>=8.0",
+]
+embeddings = [
+  "sentence-transformers>=5.1,<5.2",
+  "transformers>=4.51,<4.52",
 ]
 
 [tool.pytest.ini_options]

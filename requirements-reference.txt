@@ -1,0 +1,10 @@
+# Observed research numerical environment, Python 3.12.14.
+# Prefer these pins when comparing exact empirical portfolio values.
+numpy==2.5.1
+pandas==3.0.5
+PyYAML==6.0.3
+requests==2.34.2
+scikit-learn==1.9.0
+scipy==1.18.0
+matplotlib==3.11.1
+pytest==9.1.1
